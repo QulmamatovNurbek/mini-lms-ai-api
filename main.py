@@ -71,7 +71,7 @@ async def hayot_tsikli(app: FastAPI):
 
 app = FastAPI(
     title="Mini LMS AI API",
-    description="Mini LMS platformasi uchun AI-powered Backend (CORS Fixed)",
+    description="Mini LMS platformasi uchun AI-powered Backend (CORS & Bcrypt Fixed)",
     version="1.0.0",
     lifespan=hayot_tsikli,
     docs_url="/docs",
@@ -96,20 +96,29 @@ app.add_middleware(
 )
 logger.info("CORS middleware muvaffaqiyatli ulandi (Bulletproof rejim).")
 
-
+# =============================================================================
+# MUHIM: 72-BAYT BCRYPT LIMITINI DAVOLASH
+# =============================================================================
 def parolni_heshlash(parol: str) -> str:
+    """Parolni xavfsiz tarzda hashlaydi (72 bayt limitini hisobga olgan holda)."""
+    # bcrypt 72 baytdan oshiqni qabul qilmaydi. Shuning uchun xavfsiz kesib olamiz.
+    xavfsiz_parol = parol.encode('utf-8')[:72].decode('utf-8', 'ignore')
+    
     if PASSLIB_MAVJUD:
-        return parol_konteksti.hash(parol)
+        return parol_konteksti.hash(xavfsiz_parol)
     else:
         import hashlib
-        return hashlib.sha256(parol.encode()).hexdigest()
+        return hashlib.sha256(xavfsiz_parol.encode()).hexdigest()
 
 def parolni_tekshirish(parol: str, hash_parol: str) -> bool:
+    """Ochiq parolni hashlangan parol bilan solishtiradi."""
+    xavfsiz_parol = parol.encode('utf-8')[:72].decode('utf-8', 'ignore')
+    
     if PASSLIB_MAVJUD:
-        return parol_konteksti.verify(parol, hash_parol)
+        return parol_konteksti.verify(xavfsiz_parol, hash_parol)
     else:
         import hashlib
-        return hashlib.sha256(parol.encode()).hexdigest() == hash_parol
+        return hashlib.sha256(xavfsiz_parol.encode()).hexdigest() == hash_parol
 
 
 # =============================================================================
@@ -352,7 +361,6 @@ async def ai_generatsiya(sorov: AIGeneratsiyaSorovi, saqlash: bool = False, db: 
         raise HTTPException(status_code=500, detail={"muvaffaqiyat": False, "xabar": str(e)})
     
     if saqlash:
-        # Saqlash logikasi (Dars va Test yaratish)
         yangi_dars = models.Dars(kurs_id=sorov.kurs_id, sarlavha=f"Dars: {sorov.mavzu}", mazmun=ai_natijasi.get("dars_rejasi", {}).get("kirish", ""), ai_mavzu=sorov.mavzu)
         yangi_test = models.Test(nomi=f"Test: {sorov.mavzu}", mavzu=sorov.mavzu, kurs_id=sorov.kurs_id, savollar=ai_natijasi.get("savollar"), yaratuvchi="gemini-ai")
         db.add(yangi_dars)
