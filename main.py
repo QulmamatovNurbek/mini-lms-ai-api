@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict
 from datetime import datetime, timezone
 import uuid
+import hashlib
 
 from fastapi import FastAPI, HTTPException, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,16 +29,6 @@ from models import (
     KursYangilash, DarsYangilash, TestYangilash,
 )
 from ai_service import ai_kontent_generatsiya, testni_tekshirish_va_ball_hisoblash
-
-try:
-    from passlib.context import CryptContext
-    parol_konteksti = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    PASSLIB_MAVJUD = True
-except ImportError:
-    import hashlib
-    PASSLIB_MAVJUD = False
-    logger_temp = logging.getLogger(__name__)
-    logger_temp.warning("passlib o'rnatilmagan! SHA-256 ishlatilmoqda.")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -71,7 +62,7 @@ async def hayot_tsikli(app: FastAPI):
 
 app = FastAPI(
     title="Mini LMS AI API",
-    description="Mini LMS platformasi uchun AI-powered Backend (CORS & Bcrypt Fixed)",
+    description="Mini LMS platformasi uchun AI-powered Backend (CORS & Native Hash Fixed)",
     version="1.0.0",
     lifespan=hayot_tsikli,
     docs_url="/docs",
@@ -97,28 +88,15 @@ app.add_middleware(
 logger.info("CORS middleware muvaffaqiyatli ulandi (Bulletproof rejim).")
 
 # =============================================================================
-# MUHIM: 72-BAYT BCRYPT LIMITINI DAVOLASH
+# MUHIM: NATIVE HASHLIB (Bcrypt xatolarini aylanib o'tish)
 # =============================================================================
 def parolni_heshlash(parol: str) -> str:
-    """Parolni xavfsiz tarzda hashlaydi (72 bayt limitini hisobga olgan holda)."""
-    # bcrypt 72 baytdan oshiqni qabul qilmaydi. Shuning uchun xavfsiz kesib olamiz.
-    xavfsiz_parol = parol.encode('utf-8')[:72].decode('utf-8', 'ignore')
-    
-    if PASSLIB_MAVJUD:
-        return parol_konteksti.hash(xavfsiz_parol)
-    else:
-        import hashlib
-        return hashlib.sha256(xavfsiz_parol.encode()).hexdigest()
+    """Parolni xavfsiz tarzda native Python hashlib yordamida hashlaydi."""
+    return hashlib.sha256(parol.encode()).hexdigest()
 
 def parolni_tekshirish(parol: str, hash_parol: str) -> bool:
     """Ochiq parolni hashlangan parol bilan solishtiradi."""
-    xavfsiz_parol = parol.encode('utf-8')[:72].decode('utf-8', 'ignore')
-    
-    if PASSLIB_MAVJUD:
-        return parol_konteksti.verify(xavfsiz_parol, hash_parol)
-    else:
-        import hashlib
-        return hashlib.sha256(xavfsiz_parol.encode()).hexdigest() == hash_parol
+    return hashlib.sha256(parol.encode()).hexdigest() == hash_parol
 
 
 # =============================================================================
