@@ -1,0 +1,59 @@
+# =============================================================================
+# requirements.txt — Mini LMS AI API bog'liqliklar ro'yxati
+# =============================================================================
+# Bu fayl loyiha uchun zarur bo'lgan barcha Python paketlarini belgilaydi.
+# O'rnatish uchun: pip install -r requirements.txt
+#
+# Vercel ham bu faylni avtomatik o'qib, paketlarni o'rnatadi.
+# =============================================================================
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WEB FRAMEWORK — FastAPI va ASGI server
+# ─────────────────────────────────────────────────────────────────────────────
+fastapi==0.111.0           # Asosiy FastAPI web framework
+uvicorn[standard]==0.29.0  # ASGI server (mahalliy ishlab chiqish uchun)
+                           # [standard] — uvloop va httptools qo'shadi (tezroq)
+python-multipart==0.0.9   # FastAPI'da form ma'lumotlari va fayl yuklash uchun
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MA'LUMOTLAR BAZASI — SQLAlchemy + PostgreSQL
+# ─────────────────────────────────────────────────────────────────────────────
+sqlalchemy==2.0.30         # ORM va SQL toolkit (v2 — zamonaviy, asinxron qo'llab-quvvatlash)
+psycopg2-binary==2.9.9    # PostgreSQL drayver (binary — tezroq o'rnatiladi)
+                           # Vercel'da psycopg2-binary ishlatilishi tavsiya etiladi
+                           # Chunki kompilyatsiya talab qilmaydi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# VALIDATSIYA — Pydantic
+# ─────────────────────────────────────────────────────────────────────────────
+pydantic==1.10.17          # Ma'lumotlar validatsiyasi (v1 — EmailStr uchun)
+                           # Pydantic v2 bilan bir oz farqli sintaksis
+email-validator==2.1.1     # Pydantic EmailStr uchun zarur
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AI INTEGRATSIYA — OpenRouter (OpenAI SDK orqali)
+# ─────────────────────────────────────────────────────────────────────────────
+openai==1.35.3              # Rasmiy OpenAI Python SDK.
+                            # OpenRouter bilan ishlatilganda faqat:
+                            #   base_url="https://openrouter.ai/api/v1"
+                            #   api_key=OPENROUTER_API_KEY
+                            # o'zgartiriladi — qolgan barcha API bir xil qoladi.
+                            # AsyncOpenAI klassi natively asinxron bo'lib,
+                            # FastAPI event loop'ini blokllamaydi.
+
+# ─────────────────────────────────────────────────────────────────────────────
+# XAVFSIZLIK — Parol Hashlash
+# ─────────────────────────────────────────────────────────────────────────────
+passlib[bcrypt]==1.7.4    # Parol hashlash (bcrypt algoritmi bilan)
+                          # [bcrypt] — bcrypt backend'ini qo'shadi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MUHIT O'ZGARUVCHILARI — .env fayl
+# ─────────────────────────────────────────────────────────────────────────────
+python-dotenv==1.0.1       # .env fayldan muhit o'zgaruvchilarini yuklash
+
+# ─────────────────────────────────────────────────────────────────────────────
+# IXTIYORIY — Ishlash monitoringi va loglash
+# ─────────────────────────────────────────────────────────────────────────────
+# httpx==0.27.0            # Async HTTP client (tashqi API so'rovlar uchun)
+# starlette==0.37.2        # FastAPI'ning asosi (FastAPI bilan birga o'rnatiladi)
