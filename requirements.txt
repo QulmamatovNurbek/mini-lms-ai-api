@@ -26,7 +26,7 @@ psycopg2-binary==2.9.9    # PostgreSQL drayver (binary — tezroq o'rnatiladi)
 # ─────────────────────────────────────────────────────────────────────────────
 # VALIDATSIYA — Pydantic
 # ─────────────────────────────────────────────────────────────────────────────
-pydantic==1.10.17          # Ma'lumotlar validatsiyasi (v1 — EmailStr uchun)
+pydantic>=2.5.0          # Ma'lumotlar validatsiyasi (v1 — EmailStr uchun)
                            # Pydantic v2 bilan bir oz farqli sintaksis
 email-validator==2.1.1     # Pydantic EmailStr uchun zarur
 
