@@ -1,18 +1,8 @@
 {
-  "__comments__": {
-    "vercel_json_haqida": "Bu fayl Vercel'ga FastAPI ilovamizni qanday ishlatishni bildiradi.",
-    "muhim_eslatma": "Vercel'da Python runtime ASGI ilovalarni qo'llab-quvvatlaydi.",
-    "ishlash_tartibi": "Har bir HTTP so'rovda Vercel yangi serverless funksiya ishga tushiradi."
-  },
-  "version": 2,
   "builds": [
     {
       "src": "main.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "15mb",
-        "runtime": "python3.11"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
@@ -20,16 +10,5 @@
       "src": "/(.*)",
       "dest": "main.py"
     }
-  ],
-  "env": {
-    "DATABASE_URL": "@database_url",
-    "OPENROUTER_API_KEY": "@openrouter_api_key"
-  },
-  "regions": ["fra1"],
-  "functions": {
-    "main.py": {
-      "maxDuration": 60,
-      "memory": 1024
-    }
-  }
+  ]
 }
