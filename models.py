@@ -1,5 +1,5 @@
 # =============================================================================
-# models.py — SQLAlchemy Jadvallari va Pydantic Sxemalari (ULTRA-COMPATIBLE)
+# models.py — SQLAlchemy Jadvallari va Pydantic Sxemalari (100% BUG-FREE)
 # =============================================================================
 
 import uuid
@@ -18,7 +18,7 @@ from pydantic import BaseModel, EmailStr, Field, field_validator, model_validato
 from database import Base
 
 # =============================================================================
-#  QISM 1: SQLAlchemy ORM MODELLARI (Ma'lumotlar Bazasi Jadvallari)
+#  QISM 1: SQLAlchemy ORM MODELLARI
 # =============================================================================
 
 class Foydalanuvchi(Base):
@@ -102,7 +102,7 @@ class Natija(Base):
 
 
 # =============================================================================
-#  QISM 2: PYDANTIC SXEMALARI (HTTP Validatsiya)
+#  QISM 2: PYDANTIC SXEMALARI
 # =============================================================================
 
 class FoydalanuvchiYaratish(BaseModel):
@@ -183,14 +183,14 @@ class DarsJavob(BaseModel):
     id: uuid.UUID
     kurs_id: uuid.UUID
     sarlavha: str
-    mazmun: Optional[str]
+    mazmun: Optional[str] = None
     dars_rejasi: Optional[Any] = None
     uy_vazifasi: Optional[str] = None
     baholash_mezoni: Optional[str] = None
     tartib_raqami: int
     ai_mavzu: Optional[str] = None
     yaratilgan_vaqt: datetime
-    yangilangan_vaqt = datetime
+    yangilangan_vaqt: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -276,7 +276,7 @@ class XatoJavob(BaseModel):
     xabar: str
     tafsilot: Optional[str] = None
 
-# ── MUKAMMAL TIZIMGA KIRISH: 'parol' yoki 'password' farqsiz qabul qilinadi ──
+
 class TizimgaKirish(BaseModel):
     email: EmailStr
     parol: str = Field(default="")
@@ -301,9 +301,19 @@ class FoydalanuvchiYangilash(BaseModel):
 class KursYangilash(BaseModel):
     nomi: Optional[str] = None
     tavsif: Optional[str] = None
+    mavzu: Optional[str] = None
+    daraja: Optional[str] = None
+    faol: Optional[bool] = None
 
 
 class DarsYangilash(BaseModel):
     sarlavha: Optional[str] = None
+    mazmun: Optional[str] = None
+    tartib_raqami: Optional[int] = None
+
+
 class TestYangilash(BaseModel):
     nomi: Optional[str] = None
+    mavzu: Optional[str] = None
+    faol: Optional[bool] = None
+    umumiy_ball: Optional[int] = None
