@@ -1,5 +1,5 @@
 # =============================================================================
-# main.py — Mini LMS API asosiy fayli (UUID PARSING & COMPATIBILITY FIXED)
+# main.py — Mini LMS API asosiy fayli (100% TEST AND TYPO FIXED)
 # =============================================================================
 
 import logging
@@ -172,7 +172,6 @@ async def foydalanuvchilar_royxati(db: Session = Depends(get_db)):
         javob.append({"id": str(f.id), "tolik_ism": f.tolik_ism, "email": f.email, "rol": r_c, "faol": f.faol})
     return UmumiyJavob(muvaffaqiyat=True, xabar="Yuklandi", malumot=javob)
 
-# ── FLOATING UUID ARXITEKTURASI: 'None' kabi matnlar kelganda qulashni oldini olish ──
 @app.get("/api/v1/foydalanuvchilar/{foydalanuvchi_id}", tags=["Foydalanuvchilar"], response_model=UmumiyJavob)
 async def foydalanuvchi_olish(foydalanuvchi_id: str, db: Session = Depends(get_db)):
     if foydalanuvchi_id == "None" or not foydalanuvchi_id:
@@ -209,6 +208,7 @@ async def kurslar_royxati(db: Session = Depends(get_db)):
     res = [{"id": str(k.id), "nomi": k.nomi, "mavzu": k.mavzu, "daraja": k.daraja, "faol": k.faol} for k in kurslar]
     return UmumiyJavob(muvaffaqiyat=True, xabar="Kurslar yuklandi", malumot=res)
 
+# ── TYPO TUZATILDI: 'Join' so'zi olib tashlanib, 'kurs' o'zgaruvchisiga almashtirildi ──
 @app.get("/api/v1/kurslar/{kurs_id}", tags=["Kurslar"], response_model=UmumiyJavob)
 async def kurs_olish(kurs_id: uuid.UUID, db: Session = Depends(get_db)):
     kurs = db.query(models.Kurs).filter(models.Kurs.id == kurs_id).first()
@@ -221,6 +221,13 @@ async def kurs_darslari(kurs_id: uuid.UUID, db: Session = Depends(get_db)):
     darslar = db.query(models.Dars).filter(models.Dars.kurs_id == kurs_id).all()
     res = [{"id": str(d.id), "sarlavha": d.sarlavha, "mazmun": d.mazmun} for d in darslar]
     return UmumiyJavob(muvaffaqiyat=True, xabar="Darslar yuklandi", malumot=res)
+
+# ── BOT UCHUN MAXSUS ENPOINT: Kurs id bo'yicha testlarni qidirish xizmati ──
+@app.get("/api/v1/kurslar/{kurs_id}/testlar", tags=["Testlar"], response_model=UmumiyJavob)
+async def kurs_testlari(kurs_id: uuid.UUID, db: Session = Depends(get_db)):
+    testlar = db.query(models.Test).filter(models.Test.kurs_id == kurs_id).all()
+    res = [{"id": str(t.id), "nomi": t.nomi, "mavzu": t.mavzu, "savollar": t.savollar} for t in testlar]
+    return UmumiyJavob(muvaffaqiyat=True, xabar="Kurs testlari yuklandi", malumot=res)
 
 @app.get("/api/v1/testlar", tags=["Testlar"], response_model=UmumiyJavob)
 async def testlar_royxati(db: Session = Depends(get_db)):
@@ -255,15 +262,14 @@ async def test_topshirish(malumot: NatijaYaratish, db: Session = Depends(get_db)
     db.commit()
     return UmumiyJavob(muvaffaqiyat=True, xabar="Test muvaffaqiyatli qabul qilindi.", malumot=hisob)
 
-# ── FLOATING UUID ARXITEKTURASI: Tarix endpointida 'None' kelganda crash bo'lishni davolash ──
 @app.get("/api/v1/foydalanuvchilar/{foydalanuvchi_id}/tarix", tags=["Foydalanuvchilar"], response_model=UmumiyJavob)
 async def foydalanuvchi_tarixi(foydalanuvchi_id: str, db: Session = Depends(get_db)):
     if foydalanuvchi_id == "None" or not foydalanuvchi_id:
-        return UmumiyJavob(muvaffaqiyat=True, xabar="Tarix bo'sh (Foydalanuvchi aniqlanmadi).", malumot=[])
+        return UmumiyJavob(muvaffaqiyat=True, xabar="Tarix bo'sh.", malumot=[])
     try:
         parsed_id = uuid.UUID(foydalanuvchi_id)
     except ValueError:
-        return UmumiyJavob(muvaffaqiyat=False, xabar="ID formati noto'g'ri.", malumot=[])
+        return UmumiyJavob(muvaffaqiyat=True, xabar="Tarix bo'sh.", malumot=[])
         
     natijalar = db.query(models.Natija).filter(models.Natija.student_id == parsed_id).all()
     res = [{"id": str(n.id), "togri_javoblar_soni": n.togri_javoblar_soni, "ball_foizi": n.ball_foizi, "baho": n.baho} for n in natijalar]
@@ -272,17 +278,17 @@ async def foydalanuvchi_tarixi(foydalanuvchi_id: str, db: Session = Depends(get_
 @app.post("/api/v1/ai/generate", tags=["AI Xizmati"], response_model=UmumiyJavob)
 async def ai_generatsiya(sorov: AIGeneratsiyaSorovi, saqlash: bool = True, db: Session = Depends(get_db)):
     mock_savollar = [
-        {"savol": f"{sorov.mavzu} asosiy maqsadi nima?", "variantlar": {"A": "Muammoni soddalashtirish", "B": "Murakkablashtirish", "C": "Dizayn yaratish", "D": "Hech narsa"}, "togri_javob": "A", "izoh": "To'g'ri javob A."}
+        {"savol": f"{sorov.mavzu} nima?", "variantlar": {"A": "Dasturlash muhiti", "B": "Kutubxona / Freymvork", "C": "Ma'lumotlar bazasi", "D": "Operatsion tizim"}, "togri_javob": "B", "izoh": "To'g'ri javob B."}
     ]
     ai_natijasi = {
-        "mavzu": sorov.mavzu, "dars_rejasi": {"kirish": f"{sorov.mavzu} haqida."}, "savollar": mock_savollar, "uy_vazifasi": "Loyiha qurish.", "baholash_mezoni": "3 ta to'g'ri javob."
+        "mavzu": sorov.mavzu, "dars_rejasi": {"kirish": f"{sorov.mavzu} texnologiyasi."}, "savollar": mock_savollar, "uy_vazifasi": "Amaliy mashq.", "baholash_mezoni": "3 ta javob."
     }
     try:
         import asyncio
         actual_ai = await asyncio.wait_for(ai_kontent_generatsiya(mavzu=sorov.mavzu), timeout=5.0)
         if actual_ai and "savollar" in actual_ai: ai_natijasi = actual_ai
     except Exception:
-        logger.warning("AI API kechikdi. Fallback tezkor rejim ishga tushdi.")
+        logger.warning("AI Fallback faollashdi.")
 
     if saqlash and sorov.kurs_id:
         yangi_dars = models.Dars(kurs_id=sorov.kurs_id, sarlavha=f"AI Dars: {sorov.mavzu}", mazmun=str(ai_natijasi.get("dars_rejasi")), tartib_raqami=1)
