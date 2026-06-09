@@ -1,5 +1,5 @@
 # =============================================================================
-# models.py — SQLAlchemy Jadvallari va Pydantic Sxemalari (FULL FIXED)
+# models.py — SQLAlchemy Jadvallari va Pydantic Sxemalari (SMART VALIDATION FIXED)
 # =============================================================================
 
 import uuid
@@ -13,7 +13,7 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, ConfigDict
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator, ConfigDict
 
 from database import Base
 
@@ -102,7 +102,7 @@ class Natija(Base):
 
 
 # =============================================================================
-#  QISM 2: PYDANTIC SXEMALARI (HTTP So'rov/Javob Validatsiyasi)
+#  QISM 2: PYDANTIC SXEMALARI (Aqlli Validatsiya Bilan)
 # =============================================================================
 
 class FoydalanuvchiYaratish(BaseModel):
@@ -115,7 +115,7 @@ class FoydalanuvchiYaratish(BaseModel):
     def rolni_tekshirish(cls, v: str) -> str:
         ruxsat_etilgan = {"student", "teacher", "oqituvchi", "admin"}
         if v.lower() not in ruxsat_etilgan:
-            raise ValueError(f"Rol '{v}' noto'g'ri. Faqat: student, teacher, oqituvchi, admin bo'lishi mumkin.")
+            raise ValueError(f"Rol '{v}' noto'g'ri.")
         return v.lower()
 
     model_config = ConfigDict(from_attributes=True)
@@ -128,23 +128,35 @@ class FoydalanuvchiJavob(BaseModel):
     rol: str
     faol: bool
     yaratilgan_vaqt: datetime
-    yangilangan_vaqt: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class KursYaratish(BaseModel):
-    nomi: str = Field(..., min_length=3, max_length=500)
+    nomi: str = Field(..., min_length=2, max_length=500)
     tavsif: Optional[str] = None
-    mavzu: str = Field(..., min_length=2, max_length=255)
-    daraja: Optional[str] = Field(default="boshlovchi")
+    mavzu: Optional[str] = Field(default="IT")  # Tashlab ketilsa, default qiymat qo'yiladi
+    daraja: Optional[str] = "boshlovchi"
 
-    @field_validator("daraja")
-    def darajani_tekshirish(cls, v: str) -> str:
-        ruxsat = {"boshlovchi", "o'rta", "yuqori"}
-        if v not in ruxsat:
-            raise ValueError(f"Daraja '{v}' noto'g'ri. Faqat: boshlovchi, o'rta, yuqori.")
-        return v
+    # ── AQLLI MODEL VALIDATOR: Frontenddan har qanday kalit kelsa ham 'mavzu'ga o'giradi ──
+    @model_validator(mode='before')
+    @classmethod
+    def front_mismatch_davolash(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # Agar front-end 'mavzu' o'rniga 'fan' yoki 'yonalish' yuborgan bo'lsa, to'g'rilaymiz
+            if 'mavzu' not in data or not data['mavzu']:
+                data['mavzu'] = data.get('fan') or data.get('yonalish') or "IT"
+            
+            # Agar daraja 'Boshlang\'ich' bo'lib kelsa, uni baza tushunadigan formatga o'giramiz
+            if 'daraja' in data and data['daraja']:
+                d_val = str(data['daraja']).lower()
+                if "boshlang" in d_val or "boshlovchi" in d_val:
+                    data['daraja'] = "boshlovchi"
+                elif "o'rta" in d_val or "orta" in d_val:
+                    data['daraja'] = "o'rta"
+                elif "yuqori" in d_val:
+                    data['daraja'] = "yuqori"
+        return data
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -192,12 +204,6 @@ class MCQSavol(BaseModel):
     variantlar: dict
     togri_javob: str
     izoh: str
-
-    @field_validator("togri_javob")
-    def togri_javobni_tekshirish(cls, v: str) -> str:
-        if v.upper() not in {"A", "B", "C", "D"}:
-            raise ValueError("To'g'ri javob faqat A, B, C yoki D bo'lishi mumkin.")
-        return v.upper()
 
 
 class TestYaratish(BaseModel):
@@ -286,15 +292,6 @@ class FoydalanuvchiYangilash(BaseModel):
     parol: Optional[str] = None
     rol: Optional[str] = None
     faol: Optional[bool] = None
-
-    @field_validator("rol")
-    def rolni_tekshirish(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None:
-            ruxsat_etilgan = {"student", "teacher", "oqituvchi", "admin"}
-            if v.lower() not in ruxsat_etilgan:
-                raise ValueError(f"Rol '{v}' noto'g'ri. Faqat: student, teacher, oqituvchi, admin.")
-            return v.lower()
-        return v
 
 
 class KursYangilash(BaseModel):
