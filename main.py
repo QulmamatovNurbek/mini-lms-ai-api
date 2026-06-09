@@ -1,5 +1,5 @@
 # =============================================================================
-# main.py — Mini LMS API asosiy fayli (SINTAKSIS TO'LIQLIGICHA TUZATILDI)
+# main.py — Mini LMS API asosiy fayli (UUID PARSING & COMPATIBILITY FIXED)
 # =============================================================================
 
 import logging
@@ -172,6 +172,21 @@ async def foydalanuvchilar_royxati(db: Session = Depends(get_db)):
         javob.append({"id": str(f.id), "tolik_ism": f.tolik_ism, "email": f.email, "rol": r_c, "faol": f.faol})
     return UmumiyJavob(muvaffaqiyat=True, xabar="Yuklandi", malumot=javob)
 
+# ── FLOATING UUID ARXITEKTURASI: 'None' kabi matnlar kelganda qulashni oldini olish ──
+@app.get("/api/v1/foydalanuvchilar/{foydalanuvchi_id}", tags=["Foydalanuvchilar"], response_model=UmumiyJavob)
+async def foydalanuvchi_olish(foydalanuvchi_id: str, db: Session = Depends(get_db)):
+    if foydalanuvchi_id == "None" or not foydalanuvchi_id:
+        return UmumiyJavob(muvaffaqiyat=False, xabar="Foydalanuvchi ID topilmadi (None).")
+    try:
+        parsed_id = uuid.UUID(foydalanuvchi_id)
+    except ValueError:
+        return UmumiyJavob(muvaffaqiyat=False, xabar="ID formati noto'g'ri.")
+        
+    foydalanuvchi = db.query(models.Foydalanuvchi).filter(models.Foydalanuvchi.id == parsed_id).first()
+    if not foydalanuvchi: 
+        return UmumiyJavob(muvaffaqiyat=False, xabar="Topilmadi.")
+    return UmumiyJavob(muvaffaqiyat=True, xabar="Topildi.", malumot={"id": str(foydalanuvchi.id), "tolik_ism": foydalanuvchi.tolik_ism})
+
 @app.delete("/api/v1/foydalanuvchilar/{foydalanuvchi_id}", tags=["Foydalanuvchilar"], response_model=UmumiyJavob)
 async def foydalanuvchi_ochirish(foydalanuvchi_id: uuid.UUID, db: Session = Depends(get_db)):
     f = db.query(models.Foydalanuvchi).filter(models.Foydalanuvchi.id == foydalanuvchi_id).first()
@@ -223,7 +238,7 @@ async def test_topshirish(malumot: NatijaYaratish, db: Session = Depends(get_db)
     if eski_natija:
         raise HTTPException(
             status_code=400,
-            detail={"muvaffaqiyat": False, "xato_kodi": "ALREADY_SUBMITTED", "xabar": "Siz bu testni topshirib bo'lgansiz! Qayta topshirish mumkin emas."}
+            detail={"muvaffaqiyat": False, "xato_kodi": "ALREADY_SUBMITTED", "xabar": "Siz bu testni topshirib bo'lgansiz!"}
         )
         
     test = db.query(models.Test).filter(models.Test.id == malumot.test_id).first()
@@ -240,37 +255,34 @@ async def test_topshirish(malumot: NatijaYaratish, db: Session = Depends(get_db)
     db.commit()
     return UmumiyJavob(muvaffaqiyat=True, xabar="Test muvaffaqiyatli qabul qilindi.", malumot=hisob)
 
+# ── FLOATING UUID ARXITEKTURASI: Tarix endpointida 'None' kelganda crash bo'lishni davolash ──
 @app.get("/api/v1/foydalanuvchilar/{foydalanuvchi_id}/tarix", tags=["Foydalanuvchilar"], response_model=UmumiyJavob)
-async def foydalanuvchi_tarixi(foydalanuvchi_id: uuid.UUID, db: Session = Depends(get_db)):
-    natijalar = db.query(models.Natija).filter(models.Natija.student_id == foydalanuvchi_id).all()
+async def foydalanuvchi_tarixi(foydalanuvchi_id: str, db: Session = Depends(get_db)):
+    if foydalanuvchi_id == "None" or not foydalanuvchi_id:
+        return UmumiyJavob(muvaffaqiyat=True, xabar="Tarix bo'sh (Foydalanuvchi aniqlanmadi).", malumot=[])
+    try:
+        parsed_id = uuid.UUID(foydalanuvchi_id)
+    except ValueError:
+        return UmumiyJavob(muvaffaqiyat=False, xabar="ID formati noto'g'ri.", malumot=[])
+        
+    natijalar = db.query(models.Natija).filter(models.Natija.student_id == parsed_id).all()
     res = [{"id": str(n.id), "togri_javoblar_soni": n.togri_javoblar_soni, "ball_foizi": n.ball_foizi, "baho": n.baho} for n in natijalar]
     return UmumiyJavob(muvaffaqiyat=True, xabar="Tarix yuklandi.", malumot=res)
 
 @app.post("/api/v1/ai/generate", tags=["AI Xizmati"], response_model=UmumiyJavob)
 async def ai_generatsiya(sorov: AIGeneratsiyaSorovi, saqlash: bool = True, db: Session = Depends(get_db)):
     mock_savollar = [
-        {"savol": f"{sorov.mavzu} asosiy maqsadi nima?", "variantlar": {"A": "Muammoni soddalashtirish", "B": "Murakkablashtirish", "C": "Dizayn yaratish", "D": "Hech narsa"}, "togri_javob": "A", "izoh": "To'g'ri javob A."},
-        {"savol": f"{sorov.mavzu} qayerda keng qo'llaniladi?", "variantlar": {"A": "Web dasturlashda", "B": "Tibbiyotda", "C": "Qurilishda", "D": "Kosmosda"}, "togri_javob": "A", "izoh": "Web texnologiyalarda keng ishlatiladi."},
-        {"savol": f"{sorov.mavzu} bo'yicha eng muhim qoida?", "variantlar": {"A": "To'g'ri sintaksis", "B": "Katta harf", "C": "Nuqta qo'yish", "D": "Bo'sh joy"}, "togri_javob": "A", "izoh": "Sintaksis muhim."},
-        {"savol": f"{sorov.mavzu} qiyinchilik darajasi?", "variantlar": {"A": "O'rtacha", "B": "Juda qiyin", "C": "Oson", "D": "Noma'lum"}, "togri_javob": "C", "izoh": "Oson va qulay."},
-        {"savol": f"{sorov.mavzu} o'rganish uchun qancha vaqt kerak?", "variantlar": {"A": "1 hafta", "B": "1 oy", "C": "6 oy", "D": "1 yil"}, "togri_javob": "A", "izoh": "Boshlang'ich tushuncha tez o'rganiladi."}
+        {"savol": f"{sorov.mavzu} asosiy maqsadi nima?", "variantlar": {"A": "Muammoni soddalashtirish", "B": "Murakkablashtirish", "C": "Dizayn yaratish", "D": "Hech narsa"}, "togri_javob": "A", "izoh": "To'g'ri javob A."}
     ]
-    
     ai_natijasi = {
-        "mavzu": sorov.mavzu,
-        "dars_rejasi": {"kirish": f"{sorov.mavzu} texnologiyasiga kirish.", "asosiy": "Asosiy kod yozish jarayonlari."},
-        "savollar": mock_savollar,
-        "uy_vazifasi": f"{sorov.mavzu} mavzusida amaliy loyiha.",
-        "baholash_mezoni": "Kamida 3 ta to'g'ri javob."
+        "mavzu": sorov.mavzu, "dars_rejasi": {"kirish": f"{sorov.mavzu} haqida."}, "savollar": mock_savollar, "uy_vazifasi": "Loyiha qurish.", "baholash_mezoni": "3 ta to'g'ri javob."
     }
-
     try:
         import asyncio
         actual_ai = await asyncio.wait_for(ai_kontent_generatsiya(mavzu=sorov.mavzu), timeout=5.0)
-        if actual_ai and "savollar" in actual_ai:
-            ai_natijasi = actual_ai
+        if actual_ai and "savollar" in actual_ai: ai_natijasi = actual_ai
     except Exception:
-        logger.warning("AI API kechikdi. Tezkor rejim ishga tushdi.")
+        logger.warning("AI API kechikdi. Fallback tezkor rejim ishga tushdi.")
 
     if saqlash and sorov.kurs_id:
         yangi_dars = models.Dars(kurs_id=sorov.kurs_id, sarlavha=f"AI Dars: {sorov.mavzu}", mazmun=str(ai_natijasi.get("dars_rejasi")), tartib_raqami=1)
@@ -279,7 +291,6 @@ async def ai_generatsiya(sorov: AIGeneratsiyaSorovi, saqlash: bool = True, db: S
         db.add(yangi_test)
         db.commit()
         return UmumiyJavob(muvaffaqiyat=True, xabar="AI kontent yaratdi.", malumot={"dars_id": str(yangi_dars.id), "test_id": str(yangi_test.id), "kontent": ai_natijasi})
-
     return UmumiyJavob(muvaffaqiyat=True, xabar="Generatsiya qilindi.", malumot={"kontent": ai_natijasi})
 
 @app.exception_handler(404)
