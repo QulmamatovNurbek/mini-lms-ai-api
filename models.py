@@ -1,5 +1,5 @@
 # =============================================================================
-# models.py — SQLAlchemy Jadvallari va Pydantic Sxemalari (SMART VALIDATION FIXED)
+# models.py — SQLAlchemy Jadvallari va Pydantic Sxemalari (ULTRA-COMPATIBLE)
 # =============================================================================
 
 import uuid
@@ -102,7 +102,7 @@ class Natija(Base):
 
 
 # =============================================================================
-#  QISM 2: PYDANTIC SXEMALARI (Aqlli Validatsiya Bilan)
+#  QISM 2: PYDANTIC SXEMALARI (HTTP Validatsiya)
 # =============================================================================
 
 class FoydalanuvchiYaratish(BaseModel):
@@ -135,19 +135,15 @@ class FoydalanuvchiJavob(BaseModel):
 class KursYaratish(BaseModel):
     nomi: str = Field(..., min_length=2, max_length=500)
     tavsif: Optional[str] = None
-    mavzu: Optional[str] = Field(default="IT")  # Tashlab ketilsa, default qiymat qo'yiladi
+    mavzu: Optional[str] = Field(default="IT")
     daraja: Optional[str] = "boshlovchi"
 
-    # ── AQLLI MODEL VALIDATOR: Frontenddan har qanday kalit kelsa ham 'mavzu'ga o'giradi ──
     @model_validator(mode='before')
     @classmethod
     def front_mismatch_davolash(cls, data: Any) -> Any:
         if isinstance(data, dict):
-            # Agar front-end 'mavzu' o'rniga 'fan' yoki 'yonalish' yuborgan bo'lsa, to'g'rilaymiz
             if 'mavzu' not in data or not data['mavzu']:
                 data['mavzu'] = data.get('fan') or data.get('yonalish') or "IT"
-            
-            # Agar daraja 'Boshlang\'ich' bo'lib kelsa, uni baza tushunadigan formatga o'giramiz
             if 'daraja' in data and data['daraja']:
                 d_val = str(data['daraja']).lower()
                 if "boshlang" in d_val or "boshlovchi" in d_val:
@@ -194,7 +190,7 @@ class DarsJavob(BaseModel):
     tartib_raqami: int
     ai_mavzu: Optional[str] = None
     yaratilgan_vaqt: datetime
-    yangilangan_vaqt: datetime
+    yangilangan_vaqt = datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -280,10 +276,18 @@ class XatoJavob(BaseModel):
     xabar: str
     tafsilot: Optional[str] = None
 
-
+# ── MUKAMMAL TIZIMGA KIRISH: 'parol' yoki 'password' farqsiz qabul qilinadi ──
 class TizimgaKirish(BaseModel):
     email: EmailStr
-    parol: str
+    parol: str = Field(default="")
+
+    @model_validator(mode='before')
+    @classmethod
+    def password_converter(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if 'password' in data and ('parol' not in data or not data['parol']):
+                data['parol'] = data['password']
+        return data
 
 
 class FoydalanuvchiYangilash(BaseModel):
@@ -297,19 +301,9 @@ class FoydalanuvchiYangilash(BaseModel):
 class KursYangilash(BaseModel):
     nomi: Optional[str] = None
     tavsif: Optional[str] = None
-    mavzu: Optional[str] = None
-    daraja: Optional[str] = None
-    faol: Optional[bool] = None
 
 
 class DarsYangilash(BaseModel):
     sarlavha: Optional[str] = None
-    mazmun: Optional[str] = None
-    tartib_raqami: Optional[int] = None
-
-
 class TestYangilash(BaseModel):
     nomi: Optional[str] = None
-    mavzu: Optional[str] = None
-    faol: Optional[bool] = None
-    umumiy_ball: Optional[int] = None
